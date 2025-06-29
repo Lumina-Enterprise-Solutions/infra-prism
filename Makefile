@@ -108,3 +108,16 @@ prod-migrate-up: ## ⬆️  [PROD] Apply all database migrations
 prod-migrate-down: ## ⬇️  [PROD] Revert all database migrations
 	@echo "Reverting all database migrations on production DB..."
 	docker compose $(COMPOSE_PROD) run --rm migrate down
+
+
+.PHONY: e2e-test
+
+e2e-test: ## 🔬 [PROD] Run end-to-end tests using Newman against a running production stack
+	@echo "Starting E2E test run..."
+	@echo "-> Ensuring production stack is up..."
+	@$(MAKE) prod-up
+	@echo "-> Waiting for services to be healthy (giving 30 seconds)..."
+	@sleep 30
+	@echo "-> Running Newman Postman collection..."
+	@docker run --rm -v $(CURDIR)/postman:/etc/postman -t --network=host postman/newman:latest run "Prism Enterprise Services.postman_collection.json" --env-var "base_url=http://localhost:8000" --reporters cli,junit --reporter-junit-export /etc/postman/e2e-report.xml
+	@echo "✅ E2E test run finished. Report available at postman/e2e-report.xml"
