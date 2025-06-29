@@ -388,6 +388,35 @@ services:
       - prism-network
     profiles: ["core", "monitoring"]
 
+  # Layanan Aplikasi - Prism Invitation Service
+  invitation-service:
+    image: ghcr.io/lumina-enterprise-solutions/prism-invitation-service:latest
+    container_name: prism_invitation_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-invitation-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.invitation-service.rule=PathPrefix(`/invitations`)"
+      - "traefik.http.routers.invitation-service.entrypoints=web"
+      - "traefik.http.routers.invitation-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      - "traefik.http.services.invitation-service.loadbalancer.server.port=8080"
+    depends_on:
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+    networks:
+      - prism-network
+    profiles: ["core"]
+
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
     image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:latest

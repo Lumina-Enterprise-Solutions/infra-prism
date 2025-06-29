@@ -70,6 +70,7 @@ consul kv put config/global/redis_addr "cache-redis:6379"
 consul kv put config/prism-auth-service/port "8080"
 consul kv put config/prism-user-service/port "8080"
 consul kv put config/prism-user-service/grpc_port "9001"
+consul kv put config/prism-invitation-service/port "8080"
 consul kv put config/prism-notification-service/port "8080"
 
 # --- PERUBAHAN DI SINI: Tambahkan konfigurasi untuk file-service ---
