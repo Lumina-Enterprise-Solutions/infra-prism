@@ -35,13 +35,13 @@ jobs:
         echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
       shell: bash
 
-    - name: 4. Pull latest images from registry
-      run: docker compose -f docker-compose.prod.yml pull
+    - name: 4. Tear down old services
+      run: docker compose -f docker-compose.prod.yml down --remove-orphans
 
-    - name: 5. Deploy services with Docker Compose
+    - name: 5. Deploy new services with Docker Compose
       run: |
         docker compose -f docker-compose.prod.yml \
-        --profile core --profile monitoring up -d --remove-orphans
+        --profile core --profile monitoring up -d
 
     - name: 6. Prune old docker images
       run: docker image prune -a -f

@@ -95,4 +95,4 @@ Konfigurasi `docker-compose.local.yml` dirancang untuk bekerja dalam struktur mo
 build:
   context: ..
   dockerfile: services/prism-user-service/Dockerfile.mono
-TEST
+
