@@ -1,10 +1,11 @@
-# .github/workflows/deploy-dev.yml
+# infra/.github/workflows/deploy-dev.yml (FINAL)
+
 name: Deploy to Dev Server
 
 on:
   push:
     branches:
-    - develop # Ganti dengan branch utama Anda jika perlu (misal: main)
+    - main # Ganti dengan branch utama Anda jika perlu
 
 jobs:
   deploy:
@@ -12,17 +13,17 @@ jobs:
     runs-on: self-hosted # PENTING: Jalankan di runner yang ada di server dev Anda
 
     steps:
-    - name: 1. Checkout repository
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: 2. Log in to GitHub Container Registry
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GH_PAT }} # Secret berisi Personal Access Token
 
-    - name: 3. Create .env file from secrets
+    - name: Create .env File from Secrets
       run: |
         echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
         echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
@@ -33,15 +34,46 @@ jobs:
         echo "JAEGER_ENDPOINT=jaeger:4317" >> .env
         echo "VAULT_ADDR=http://vault:8200" >> .env
         echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+        # Tambahkan variabel RabbitMQ
+        echo "RABBITMQ_USER=guest" >> .env
+        echo "RABBITMQ_PASS=guest" >> .env
+        echo "RABBITMQ_HOST=rabbitmq" >> .env
+        echo "RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/" >> .env
       shell: bash
 
-    - name: 4. Tear down old services
-      run: docker compose -f docker-compose.prod.yml down --remove-orphans
+    - name: Pull Latest Docker Images
+      # Menarik image terbaru dari registry sebelum menjalankan compose
+      run: docker compose -f docker-compose.prod.yml pull
 
-    - name: 5. Deploy new services with Docker Compose
+    - name: Deploy Core & Monitoring Stacks
       run: |
-        docker compose -f docker-compose.prod.yml \
-        --profile core --profile monitoring up -d
+        # Menggunakan `up -d` akan membuat atau memulai ulang container yang diubah
+        docker compose -f docker-compose.prod.yml up -d --remove-orphans \
+        --profile core --profile monitoring
 
-    - name: 6. Prune old docker images
-      run: docker image prune -a -f
+    - name: Clean Up Old Docker Images
+      # Membersihkan image yang tidak terpakai lagi (dangling) untuk menghemat ruang
+      run: docker image prune -f
+
+  # --- JOB BARU UNTUK E2E TEST ---
+  e2e_test:
+    name: Run End-to-End Tests
+    needs: deploy # Job ini hanya berjalan JIKA job 'deploy' berhasil
+    runs-on: self-hosted # Jalankan di server yang sama dengan environment yang di-deploy
+
+    steps:
+    - name: Checkout Repository
+      # Checkout lagi diperlukan karena job ini berjalan di runner yang bersih
+      uses: actions/checkout@v4
+
+    - name: Run E2E Test Suite via Makefile
+      # Jalankan target Makefile yang sudah kita siapkan
+      run: make e2e-test
+
+    - name: Upload E2E Test Report
+      uses: actions/upload-artifact@v4
+      if: always() # Selalu upload report, bahkan jika tes gagal untuk debugging
+      with:
+        name: e2e-test-report
+        # Path di dalam runner tempat report disimpan oleh Makefile
+        path: postman/e2e-report.xml
