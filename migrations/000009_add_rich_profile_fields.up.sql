@@ -1,0 +1,5 @@
+ALTER TABLE users
+ADD COLUMN bio TEXT,
+ADD COLUMN job_title VARCHAR(255),
+ADD COLUMN timezone VARCHAR(100),
+ADD COLUMN social_links JSONB;

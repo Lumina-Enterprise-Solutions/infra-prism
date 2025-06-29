@@ -1,0 +1,87 @@
+http:
+  middlewares:
+    # --- Security Headers ---
+    security-headers:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        customFrameOptionsValue: "DENY"
+        customResponseHeaders:
+          X-Powered-By: "Lumina Enterprise"
+          X-XSS-Protection: "1; mode=block"
+
+    # --- CORS policy (FIXED) ---
+    cors-policy:
+      headers:
+        # Fixed: Only one accessControlAllowOriginList declaration
+        accessControlAllowOriginList:
+        - "http://localhost:3000"
+        - "http://localhost:8080"
+        - "https://lumina.local"
+        accessControlAllowHeaders:
+        - "Accept"
+        - "Accept-Version"
+        - "Content-Length"
+        - "Content-Type"
+        - "Date"
+        - "Authorization"
+        - "X-Auth-Token"
+        accessControlAllowMethods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "PATCH"
+        - "OPTIONS"
+        accessControlExposeHeaders:
+        - "X-Auth-Token"
+        - "X-Request-ID"
+        accessControlMaxAge: 3600
+        # Added: Enable credentials if needed
+        accessControlAllowCredentials: true
+
+    # --- Rate limit for login/register routes ---
+    login-rate-limit:
+      rateLimit:
+        average: 10
+        burst: 20
+        # Added: Consider adding a period for clarity
+        period: "1m"
+
+    # --- Global rate limit for general routes ---
+    global-rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: "1m"
+
+    service-circuit-breaker:
+      circuitBreaker:
+        # Ekspresi ini akan membuka sirkuit jika:
+        # 1. Rasio error jaringan lebih dari 30%
+        # ATAU
+        # 2. Rasio kode status 5xx lebih dari 30% dari total request yang valid (status 0-599)
+        expression: "NetworkErrorRatio() > 0.30 || ResponseCodeRatio(500, 600, 0, 600) > 0.30"
+        # Interval pengecekan kondisi
+        checkPeriod: "10s"
+        # Durasi sirkuit terbuka sebelum masuk mode recovery
+        fallbackDuration: "20s"
+        # Durasi mode recovery
+        recoveryDuration: "10s"
+    # --- Optional: Auth middleware example ---
+    # auth-forward:
+    #   forwardAuth:
+    #     address: "http://auth-service:8080/auth"
+    #     authResponseHeaders:
+    #       - "X-User-Id"
+    #       - "X-User-Role"
+
+    # --- Optional: IP whitelist example ---
+    # ip-whitelist:
+    #   ipWhiteList:
+    #     sourceRange:
+    #       - "127.0.0.1/32"
+    #       - "10.0.0.0/8"
+    #       - "172.16.0.0/12"
+    #       - "192.168.0.0/16"

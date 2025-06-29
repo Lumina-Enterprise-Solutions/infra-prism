@@ -1,0 +1,32 @@
+# infra/traefik/traefik.yml
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+log:
+  level: INFO # Use DEBUG for more verbose logging
+
+# Configure the API and dashboard
+api:
+  dashboard: true
+  insecure: true # Warning: Do not use this in production
+
+# Define the entrypoints for incoming traffic
+entryPoints:
+  web:
+    address: ":8000"
+  metrics:
+    address: ":8082"
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+
+# Define the providers for dynamic configuration
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: "/etc/traefik/config"
+    watch: true

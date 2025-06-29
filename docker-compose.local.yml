@@ -1,0 +1,484 @@
+# infra/docker-compose.yml
+services:
+  # Layanan Database Relasional - PostgreSQL
+  db-postgres:
+    image: postgres:17.5-alpine
+    container_name: prism_postgres_db
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+
+  # Layanan Cache - Redis
+  cache-redis:
+    image: redis:8.0.2-alpine
+    container_name: prism_redis_cache
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  # Layanan Database Dokumen - MongoDB
+  db-mongo:
+    image: mongo:8.0.10
+    container_name: prism_mongo_db
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=prismadmin
+      - MONGO_INITDB_ROOT_PASSWORD=prismpassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  migrate:
+    image: migrate/migrate
+    container_name: prism_db_migrator
+    networks:
+      - prism-network
+    volumes:
+      - ./migrations:/migrations
+    # The command tells migrate to use the files in /migrations, connect to the postgres DB, and run 'up'.
+    command: ["-path", "/migrations", "-database", "postgres://prismuser:prismpassword@db-postgres:5432/prism_erp?sslmode=disable", "up"]
+    depends_on:
+      db-postgres:
+        # Ensures the database is ready before trying to run migrations
+        condition: service_healthy
+    restart: "no" # We only want this to run once successfully
+    profiles: ["core"]
+
+  # --- API Gateway Traefik ---
+  traefik:
+    image: traefik:v3.4.1
+    container_name: prism_traefik_gateway
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/config"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:8000"
+      - "--log.level=INFO"
+    ports:
+      - "8000:8000" # Proxy port
+      - "8081:8080" # Dashboard port
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/config:/etc/traefik/config:ro
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD", "traefik", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+
+  # --- Layanan Monitoring dan Observability ---
+  jaeger:
+    image: jaegertracing/all-in-one:1.69.0
+    container_name: prism_jaeger
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    networks:
+      - prism-network
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    profiles: ["monitoring"]
+
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: prism_prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    networks:
+      - prism-network
+    profiles: ["monitoring"]
+
+  loki:
+    image: grafana/loki:3.5.1
+    container_name: prism_loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - prism-network
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:12.0.1
+    container_name: prism_grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana/provisioning/dashboards/dashboard-provider.yml:/etc/grafana/provisioning/dashboards/dashboard-provider.yml:ro
+      - ./grafana/dashboards/:/var/lib/grafana/dashboards/:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    networks:
+      - prism-network
+    depends_on:
+      - prometheus
+      - loki
+    profiles: ["monitoring"]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: prism_cadvisor
+    privileged: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - prism-network
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # --- Layanan Service Discovery - Consul ---
+  consul:
+    image: hashicorp/consul:1.21.1
+    container_name: prism_consul
+    hostname: consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD", "consul", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+
+  # --- Layanan Secret Management - Vault ---
+  vault:
+    image: hashicorp/vault:1.19
+    container_name: prism_vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root-token-for-dev"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - prism-network
+    command: "server -dev -dev-root-token-id=root-token-for-dev -dev-listen-address=0.0.0.0:8200"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    profiles: ["core"]
+
+  # --- Service untuk setup Vault & Consul saat pertama kali dijalankan ---
+  vault-setup:
+    build:
+      context: ./vault-setup
+    container_name: prism_vault_setup
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=http://consul:8500
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=db-postgres
+      - POSTGRES_PORT=5432
+    depends_on:
+      vault:
+        condition: service_started
+      consul:
+        condition: service_healthy
+    networks:
+      - prism-network
+    restart: "no"
+    profiles: ["core"]
+
+  minio:
+    image: minio/minio:RELEASE.2025-06-13T11-33-47Z
+    container_name: prism_minio_storage
+    hostname: minio
+    ports:
+      - "9000:9000"  # API Port
+      - "9001:9001"  # Console UI Port
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - prism-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["core"]
+
+  createbuckets:
+    image: minio/mc
+    container_name: prism_minio_setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - prism-network
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Menunggu Minio siap...';
+      sleep 2;
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/prism-files --ignore-existing;
+      /usr/bin/mc policy set public myminio/prism-files;
+      echo 'Bucket berhasil dibuat dan dikonfigurasi.';
+      exit 0;
+      "
+    restart: "no"
+    profiles: ["core"]
+
+  # --- Layanan Aplikasi ---
+
+  # Layanan Aplikasi - Prism Auth Service
+  auth-service:
+    build:
+      context: ..
+      dockerfile: services/prism-auth-service/Dockerfile.mono
+    # image: ghcr.io/lumina-enterprise-solutions/prism-auth-service:1.0.0
+    container_name: prism_auth_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      # Variabel untuk bootstrapping, service akan mengambil sisanya sendiri
+      - SERVICE_NAME=prism-auth-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      # --- Router untuk Login/Register (Prioritas Tinggi & Rate Limit Ketat) ---
+      - "traefik.http.routers.auth-login.rule=PathPrefix(`/auth/login`) || PathPrefix(`/auth/register`)"
+      - "traefik.http.routers.auth-login.entrypoints=web"
+      - "traefik.http.routers.auth-login.priority=11"
+      - "traefik.http.routers.auth-login.middlewares=security-headers@file,cors-policy@file,login-rate-limit@file,service-circuit-breaker@file"
+      - "traefik.http.routers.auth-login.service=auth-service"
+      # --- Router Umum untuk /auth (Prioritas Rendah & Rate Limit Global) ---
+      - "traefik.http.routers.auth-service.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth-service.entrypoints=web"
+      - "traefik.http.routers.auth-service.priority=10"
+      - "traefik.http.routers.auth-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      - "traefik.http.routers.auth-service.service=auth-service"
+      # --- Definisi Service ---
+      - "traefik.http.services.auth-service.loadbalancer.server.port=8080"
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+      migrate: # <-- CHANGE THIS
+        condition: service_completed_successfully
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  # Layanan Aplikasi - Prism User Service
+  user-service:
+    build:
+      context: ..
+      dockerfile: services/prism-user-service/Dockerfile.mono
+    container_name: prism_user_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-user-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      # --- Router ---
+      - "traefik.http.routers.user-service.rule=PathPrefix(`/users`)"
+      - "traefik.http.routers.user-service.entrypoints=web"
+      - "traefik.http.routers.user-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      # --- Definisi Service ---
+      - "traefik.http.services.user-service.loadbalancer.server.port=8080"
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+      migrate: # <-- CHANGE THIS
+        condition: service_completed_successfully
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  # Layanan Aplikasi - Prism Notification Service
+  notification-service:
+    build:
+      context: ..
+      dockerfile: services/prism-notification-service/Dockerfile.mono
+    container_name: prism_notification_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-notification-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      # --- Router ---
+      - "traefik.http.routers.notification-service.rule=PathPrefix(`/notifications`)"
+      - "traefik.http.routers.notification-service.entrypoints=web"
+      - "traefik.http.routers.notification-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      # --- Definisi Service ---
+      - "traefik.http.services.notification-service.loadbalancer.server.port=8080"
+    depends_on:
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+      cache-redis:
+        condition: service_started
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  # Layanan Aplikasi - Prism File Service
+  file-service:
+    build:
+      context: ..
+      dockerfile: services/prism-file-service/Dockerfile.mono
+    container_name: prism_file_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-file-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    volumes:
+      - file_storage_data:/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.file-service.rule=PathPrefix(`/files`)"
+      - "traefik.http.routers.file-service.entrypoints=web"
+      - "traefik.http.routers.file-service.service=file-service"
+      - "traefik.http.routers.file-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      # FIX: Ubah port load balancer Traefik ke 8080
+      - "traefik.http.services.file-service.loadbalancer.server.port=8080"
+    depends_on:
+      db-postgres:
+        condition: service_healthy
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      createbuckets:
+        condition: service_completed_successfully
+    networks:
+      - prism-network
+    healthcheck:
+      # FIX: Ubah port healthcheck ke 8080
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/files/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    profiles: ["core"]
+
+networks:
+  prism-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  file_storage_data:
+    driver: local
+  minio_data:
+    driver: local

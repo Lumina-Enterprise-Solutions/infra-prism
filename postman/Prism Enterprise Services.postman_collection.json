@@ -1,0 +1,1427 @@
+{
+	"info": {
+		"_postman_id": "b07f184a-a50f-45f6-a796-3c18218333c3",
+		"name": "Prism Enterprise Services",
+		"description": "A consolidated Postman collection merging features from Fase 0, Fase 1, and the base collection. Includes Auth (Login, 2FA, Password Reset, API Keys, OAuth2), User Management (Profiles, Admin, RBAC), File, Notification, and Health Check services.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14544101",
+		"_collection_link": "https://lumina-enterprise-solutions.postman.co/workspace/Lumina-Enterprise-Solutions-Wor~da48abfb-277e-4d51-b0a8-b12e51654db7/collection/14544101-b07f184a-a50f-45f6-a796-3c18218333c3?action=share&source=collection_link&creator=14544101"
+	},
+	"item": [
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Password Reset",
+					"item": [
+						{
+							"name": "1. Forgot Password",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"test.user@example.com\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/forgot-password",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"forgot-password"
+									]
+								},
+								"description": "Initiates the password reset flow. If the email exists, it sends a reset link to the user's email via the notification service."
+							},
+							"response": []
+						},
+						{
+							"name": "2. Reset Password",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"token\": \"PASTE_TOKEN_FROM_EMAIL_HERE\",\n    \"new_password\": \"newSecurePassword456\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/reset-password",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"reset-password"
+									]
+								},
+								"description": "Completes the password reset flow using the token received via email and a new password."
+							},
+							"response": []
+						}
+					],
+					"description": "Endpoints for the self-service password reset flow."
+				},
+				{
+					"name": "2FA Management",
+					"item": [
+						{
+							"name": "Setup 2FA (Get QR Code)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Save the 2FA secret to a variable for the verify step",
+											"if (pm.response.code === 200) {",
+											"    const responseJson = pm.response.json();",
+											"    if (responseJson.secret) {",
+											"        pm.collectionVariables.set('2fa_secret', responseJson.secret);",
+											"        console.log('2FA Secret saved to variable.');",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/2fa/setup",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"2fa",
+										"setup"
+									]
+								},
+								"description": "Generates a new TOTP secret and QR code for the authenticated user. The response contains a base64-encoded QR code image and the secret key. **Requires a valid access token.**"
+							},
+							"response": []
+						},
+						{
+							"name": "Verify & Enable 2FA",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"secret\": \"{{2fa_secret}}\",\n    \"code\": \"\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/2fa/verify",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"2fa",
+										"verify"
+									]
+								},
+								"description": "After scanning the QR code, send the generated 6-digit code and the secret from the setup step to this endpoint. This will permanently enable 2FA for the user's account."
+							},
+							"response": []
+						}
+					],
+					"description": "Endpoints for users to manage their own Two-Factor Authentication settings."
+				},
+				{
+					"name": "API Key Management (M2M Auth)",
+					"item": [
+						{
+							"name": "Create API Key",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const responseJson = pm.response.json();",
+											"    if (responseJson.api_key) {",
+											"        pm.collectionVariables.set('api_key', responseJson.api_key);",
+											"        console.log('New API Key saved to variable.');",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"description\": \"Key for CI/CD runner\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/keys",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"keys"
+									]
+								},
+								"description": "Creates a new API key for the authenticated user. The full key is only returned ONCE in this response. It cannot be retrieved again."
+							},
+							"response": []
+						},
+						{
+							"name": "Get My API Keys",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const keys = pm.response.json();",
+											"    if (keys && keys.length > 0) {",
+											"        pm.collectionVariables.set('api_key_id_to_revoke', keys[0].id);",
+											"        console.log('Saved API Key ID to revoke:', keys[0].id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/keys",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"keys"
+									]
+								},
+								"description": "Retrieves metadata (prefix, description, dates) for all API keys belonging to the authenticated user. This does NOT return the secret keys."
+							},
+							"response": []
+						},
+						{
+							"name": "Revoke API Key",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/keys/{{api_key_id_to_revoke}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"keys",
+										"{{api_key_id_to_revoke}}"
+									]
+								},
+								"description": "Revokes (soft-deletes) an API key, making it unusable. The ID is automatically populated from the 'Get My API Keys' request."
+							},
+							"response": []
+						}
+					],
+					"description": "Endpoints for creating and managing long-lived API keys for machine-to-machine authentication. Requires a valid JWT to manage keys."
+				},
+				{
+					"name": "OAuth2",
+					"item": [
+						{
+							"name": "Google Login",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/google/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"google",
+										"login"
+									]
+								},
+								"description": "Redirects to Google's consent screen. This is typically opened in a browser."
+							},
+							"response": []
+						},
+						{
+							"name": "Google Callback",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/google/callback?code=YOUR_CODE_HERE&state=YOUR_STATE_HERE",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"google",
+										"callback"
+									],
+									"query": [
+										{
+											"key": "code",
+											"value": "YOUR_CODE_HERE"
+										},
+										{
+											"key": "state",
+											"value": "YOUR_STATE_HERE"
+										}
+									]
+								},
+								"description": "Endpoint that Google redirects back to. Postman cannot handle this flow automatically. You must manually get the `code` and `state` from the browser redirect and paste them here."
+							},
+							"response": []
+						},
+						{
+							"name": "Microsoft Login",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/microsoft/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"microsoft",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Microsoft Callback",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/auth/microsoft/callback",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"auth",
+										"microsoft",
+										"callback"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "1. Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test.user@example.com\",\n    \"password\": \"securepassword123\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account. By default, new users get the 'user' role."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Login (Step 1 - Password)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract tokens if 2FA is not required, or signal that 2FA is needed.",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.collectionVariables.set('user_email_for_2fa', requestBody.email);",
+									"",
+									"    if (responseJson.is_2fa_required === true) {",
+									"        console.log('2FA is required. Please proceed to Step 2.');",
+									"        pm.collectionVariables.unset('jwt_token');",
+									"        pm.collectionVariables.unset('refresh_token');",
+									"    } else if (responseJson.auth_tokens) {",
+									"        pm.collectionVariables.set('jwt_token', responseJson.auth_tokens.access_token);",
+									"        pm.collectionVariables.set('refresh_token', responseJson.auth_tokens.refresh_token);",
+									"        console.log('Login successful (2FA not enabled). Tokens saved.');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test.user@example.com\",\n    \"password\": \"securepassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates with email and password. If 2FA is enabled, it will return `is_2fa_required: true`. Otherwise, it returns the access and refresh tokens directly."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Login (Step 2 - 2FA Code)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// If 2FA login is successful, save the new tokens.",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.access_token) {",
+									"        pm.collectionVariables.set('jwt_token', responseJson.access_token);",
+									"        console.log('Access Token saved.');",
+									"    }",
+									"    if (responseJson.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', responseJson.refresh_token);",
+									"        console.log('Refresh Token saved.');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{user_email_for_2fa}}\",\n    \"code\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login/2fa",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login",
+								"2fa"
+							]
+						},
+						"description": "After a successful password login (Step 1) that requires 2FA, send the user's email and the 6-digit code from their authenticator app to get the final tokens."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Access Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// After refreshing, automatically update the tokens in the variables",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.access_token) {",
+									"        pm.collectionVariables.set('jwt_token', responseJson.access_token);",
+									"        console.log('New Access Token saved.');",
+									"    }",
+									"    if (responseJson.refresh_token) {",
+									"        pm.collectionVariables.set('refresh_token', responseJson.refresh_token);",
+									"        console.log('New Refresh Token saved.');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Send the long-lived refresh token to get a new pair of access and refresh tokens. This request also automatically updates the collection variables upon success."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Revokes the current access token by adding it to a denylist. After this, the token can no longer be used to access protected routes."
+					},
+					"response": []
+				}
+			],
+			"description": "Handles user registration, login (password & 2FA), token management, password reset, API keys, and OAuth2 integration."
+		},
+		{
+			"name": "User Service",
+			"item": [
+				{
+					"name": "My Profile",
+					"item": [
+						{
+							"name": "Get My Profile",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me"
+									]
+								},
+								"description": "Get current user's profile information (requires JWT token)."
+							},
+							"response": []
+						},
+						{
+							"name": "Update My Profile",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"first_name\": \"Johnny\",\n    \"last_name\": \"Doe\",\n    \"phone_number\": \"+1-555-123-4567\",\n    \"bio\": \"Senior Software Engineer at Lumina.\",\n    \"job_title\": \"Engineer\",\n    \"timezone\": \"Asia/Jakarta\",\n    \"social_links\": {\n        \"linkedin\": \"https://linkedin.com/in/johnnydoe\",\n        \"github\": \"https://github.com/johnnydoe\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/users/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me"
+									]
+								},
+								"description": "Update the profile of the currently authenticated user."
+							},
+							"response": []
+						},
+						{
+							"name": "Upload My Avatar",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "avatar",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/users/me/avatar",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me",
+										"avatar"
+									]
+								},
+								"description": "Upload a profile picture for the currently authenticated user. The file should be sent as form-data with the key 'avatar'."
+							},
+							"response": []
+						},
+						{
+							"name": "Get My Preferences",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/me/preferences",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me",
+										"preferences"
+									]
+								},
+								"description": "Retrieves the personalized settings (like theme, language) for the current user."
+							},
+							"response": []
+						},
+						{
+							"name": "Update My Preferences",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"theme\": \"dark\",\n    \"language\": \"id\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/users/me/preferences",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me",
+										"preferences"
+									]
+								},
+								"description": "Updates the personalized settings for the current user. Allowed keys are 'theme' and 'language'."
+							},
+							"response": []
+						},
+						{
+							"name": "Get My Activity Log",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/me/activity",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"me",
+										"activity"
+									]
+								},
+								"description": "Retrieves a paginated list of audit trails related to the current user (actions performed by them or on them)."
+							},
+							"response": []
+						}
+					],
+					"description": "Endpoints for an authenticated user to manage their own profile."
+				},
+				{
+					"name": "Admin Actions",
+					"item": [
+						{
+							"name": "RBAC Management",
+							"item": [
+								{
+									"name": "Create Role",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{jwt_token_admin}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"editor\",\n    \"description\": \"Can edit articles and content.\",\n    \"permissions\": [\n        \"users:update:status\"\n    ]\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{base_url}}/users/rbac/roles",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"users",
+												"rbac",
+												"roles"
+											]
+										},
+										"description": "Creates a new role and optionally assigns a list of permissions to it."
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Roles",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{jwt_token_admin}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/users/rbac/roles",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"users",
+												"rbac",
+												"roles"
+											]
+										},
+										"description": "Retrieves a list of all available roles in the system."
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Permissions",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{jwt_token_admin}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{base_url}}/users/rbac/permissions",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"users",
+												"rbac",
+												"permissions"
+											]
+										},
+										"description": "Retrieves a list of all available permissions that can be assigned to roles."
+									},
+									"response": []
+								},
+								{
+									"name": "Update User Role",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{jwt_token_admin}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"role\": \"admin\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{base_url}}/users/rbac/users/{{user_id_to_manage}}/role",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"users",
+												"rbac",
+												"users",
+												"{{user_id_to_manage}}",
+												"role"
+											]
+										},
+										"description": "Assigns a new role to a specified user."
+									},
+									"response": []
+								}
+							],
+							"description": "Endpoints for managing roles and permissions. **(Requires Admin Role)**"
+						},
+						{
+							"name": "Get All Users",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// If request is successful, grab the ID of the first non-admin user ",
+											"// and save it to a variable for other requests to use.",
+											"if (pm.response.code === 200) {",
+											"    const users = pm.response.json().data;",
+											"    if (users && users.length > 0) {",
+											"        const userToManage = users.find(user => user.email !== 'admin@prismerp.com');",
+											"        if (userToManage) {",
+											"            pm.collectionVariables.set('user_id_to_manage', userToManage.id);",
+											"            console.log('Saved user ID to manage:', userToManage.id);",
+											"        } else {",
+											"            console.log('No non-admin user found to manage.');",
+											"        }",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token_admin}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users?limit=10&page=1&sort_by=created_at&order=desc&status=active",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "sort_by",
+											"value": "created_at"
+										},
+										{
+											"key": "order",
+											"value": "desc"
+										},
+										{
+											"key": "status",
+											"value": "active"
+										}
+									]
+								},
+								"description": "Retrieve a paginated, sorted, and filtered list of all users. **(Requires Admin Role)**"
+							},
+							"response": []
+						},
+						{
+							"name": "Update User Status",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token_admin}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"suspended\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/users/{{user_id_to_manage}}/status",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"{{user_id_to_manage}}",
+										"status"
+									]
+								},
+								"description": "Updates the status of a specific user. Valid statuses are 'active', 'inactive', 'suspended'. **(Requires Admin Role)**"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User By ID (Soft Delete)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{jwt_token_admin}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/{{user_id_to_manage}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"users",
+										"{{user_id_to_manage}}"
+									]
+								},
+								"description": "Soft-deletes a specific user by their ID. The user will no longer be able to log in or appear in queries, but their data is preserved in the database. **(Requires Admin Role)**"
+							},
+							"response": []
+						}
+					],
+					"description": "Endpoints for administrators to manage all users, roles, and permissions. Requires Admin role."
+				}
+			],
+			"description": "Manages user profiles, preferences, administrative actions, and Role-Based Access Control (RBAC)."
+		},
+		{
+			"name": "File Service",
+			"item": [
+				{
+					"name": "Upload File",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.id) {",
+									"        pm.collectionVariables.set('last_uploaded_file_id', responseJson.id);",
+									"        console.log('Saved file ID to var: ' + responseJson.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "tags",
+									"value": "laporan-bulanan,keuangan",
+									"type": "text",
+									"description": "Comma-separated list of tags for access control."
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/files/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"files",
+								"upload"
+							]
+						},
+						"description": "Uploads a single file using form-data. The key for the file must be 'file'. You can optionally add a 'tags' field with a comma-separated list of tags for access control (e.g., 'keuangan,laporan'). Automatically saves the file ID to a variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Download File",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/files/{{last_uploaded_file_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"files",
+								"{{last_uploaded_file_id}}"
+							]
+						},
+						"description": "Downloads the last file that was successfully uploaded. The file ID is populated automatically from the 'Upload File' request. Access is restricted to the owner, an admin, or a user whose role matches one of the file's tags."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for secure file upload and download, with validation and metadata storage."
+		},
+		{
+			"name": "Notification Service",
+			"item": [
+				{
+					"name": "Send Notification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"recipient\": \"test.user@example.com\",\n  \"subject\": \"Test Notification from Postman\",\n  \"message\": \"<h1>Hello!</h1><p>This is a test message sent via the Notification Service.</p>\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/send",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"send"
+							]
+						},
+						"description": "Sends a notification request (e.g., an email) to be processed asynchronously via a queue. The correct response is `202 Accepted`."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for sending asynchronous notifications like emails."
+		},
+		{
+			"name": "Health Checks",
+			"item": [
+				{
+					"name": "Auth Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"health"
+							]
+						},
+						"description": "Checks the operational status of the Auth Service."
+					},
+					"response": []
+				},
+				{
+					"name": "User Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"health"
+							]
+						},
+						"description": "Checks the operational status of the User Service."
+					},
+					"response": []
+				},
+				{
+					"name": "File Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/files/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"files",
+								"health"
+							]
+						},
+						"description": "Checks the operational status of the File Service."
+					},
+					"response": []
+				},
+				{
+					"name": "Notification Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notifications/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"health"
+							]
+						},
+						"description": "Checks the operational status of the Notification Service."
+					},
+					"response": []
+				}
+			],
+			"description": "A collection of health check endpoints for all services, useful for monitoring and diagnostics."
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test('Response time is less than 2000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+					"});",
+					"",
+					"pm.test(\"Status code is 2xx\", function () {",
+					"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 204]);",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000"
+		},
+		{
+			"key": "jwt_token",
+			"value": ""
+		},
+		{
+			"key": "jwt_token_admin",
+			"value": ""
+		},
+		{
+			"key": "refresh_token",
+			"value": ""
+		},
+		{
+			"key": "user_id_to_manage",
+			"value": ""
+		},
+		{
+			"key": "last_uploaded_file_id",
+			"value": ""
+		},
+		{
+			"key": "user_email_for_2fa",
+			"value": ""
+		},
+		{
+			"key": "2fa_secret",
+			"value": ""
+		},
+		{
+			"key": "api_key",
+			"value": ""
+		},
+		{
+			"key": "api_key_id_to_revoke",
+			"value": ""
+		}
+	]
+}
