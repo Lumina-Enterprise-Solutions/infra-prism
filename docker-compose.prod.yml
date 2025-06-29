@@ -390,7 +390,7 @@ services:
 
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:1.0.1
+    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:latest
     container_name: prism_notification_service
     logging:
       driver: loki
