@@ -1,0 +1,59 @@
+{
+  "exchanges": [
+    {
+      "name": "prism_notifications_exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "prism_dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "notification_queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "prism_dlx",
+        "x-dead-letter-routing-key": "dlq_key"
+      }
+    },
+    {
+      "name": "notification_dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "prism_notifications_exchange",
+      "vhost": "/",
+      "destination": "notification_queue",
+      "destination_type": "queue",
+      "routing_key": "email_notification",
+      "arguments": {}
+    },
+    {
+      "source": "prism_dlx",
+      "vhost": "/",
+      "destination": "notification_dlq",
+      "destination_type": "queue",
+      "routing_key": "dlq_key",
+      "arguments": {}
+    }
+  ]
+}
