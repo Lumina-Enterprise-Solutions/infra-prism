@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastruktur Prism ERP - Enterprise Microservices Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#6366f1',
+                        'secondary': '#8b5cf6',
+                        'accent': '#ec4899',
+                        'dark': '#0f0f23',
+                        'darker': '#0a0a1a'
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.8s ease-out',
+                        'fade-in': 'fadeIn 1s ease-out'
+                    },
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+            100% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6), 0 0 60px rgba(139, 92, 246, 0.3); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0f23 0%, #1e1b4b 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899, #f97316);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 8s ease infinite;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        .code-block {
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.8), rgba(55, 65, 81, 0.6));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .code-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.8s;
+        }
+        
+        .code-block:hover::before {
+            left: 100%;
+        }
+        
+        .tech-icon {
+            transition: all 0.3s ease;
+        }
+        
+        .tech-icon:hover {
+            transform: scale(1.1) rotate(5deg);
+            filter: drop-shadow(0 10px 20px rgba(99, 102, 241, 0.3));
+        }
+        
+        .feature-card {
+            transition: all 0.4s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+        
+        .hero-pattern {
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+        }
+        
+        .service-link {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .service-link:hover {
+            background: rgba(99, 102, 241, 0.1);
+            border-left-color: #6366f1;
+            transform: translateX(5px);
+        }
+        
+        .stat-number {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        nav {
+            backdrop-filter: blur(20px);
+            background: rgba(15, 15, 35, 0.8);
+        }
+        
+        .logo-glow {
+            filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));
+        }
+    </style>
+</head>
+<body class="antialiased font-sans text-gray-100">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <img src="https://avatars.githubusercontent.com/u/212679102?s=400&u=22777bff9c391d64acdb13e7fa18fb9986a11ab4&v=4" 
+                         alt="Prism ERP Logo" 
+                         class="w-10 h-10 rounded-lg logo-glow">
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">Prism ERP</h1>
+                        <p class="text-xs text-gray-400">Infrastructure Platform</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#features" class="text-gray-300 hover:text-white transition">Features</a>
+                    <a href="#architecture" class="text-gray-300 hover:text-white transition">Architecture</a>
+                    <a href="#quickstart" class="text-gray-300 hover:text-white transition">Quick Start</a>
+                    <a href="#services" class="text-gray-300 hover:text-white transition">Services</a>
+                </div>
+                <a href="#" class="glass-card px-4 py-2 rounded-lg hover:bg-white/10 transition">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center hero-pattern relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-dark/50 to-dark"></div>
+        <div class="container mx-auto px-4 py-32 text-center relative z-10">
+            <div class="animate-slide-up">
+                <div class="mb-8 flex justify-center">
+                    <img src="https://avatars.githubusercontent.com/u/212679102?s=400&u=22777bff9c391d64acdb13e7fa18fb9986a11ab4&v=4" 
+                         alt="Prism ERP" 
+                         class="w-24 h-24 rounded-2xl animate-float logo-glow">
+                </div>
+                <h1 class="text-5xl md:text-7xl font-black tracking-tight mb-6">
+                    <span class="gradient-text">Prism ERP</span><br>
+                    <span class="text-white">Infrastructure</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto mb-8 leading-relaxed">
+                    Platform microservices yang powerful, observable, dan production-ready. 
+                    <span class="gradient-text font-semibold">Fully defined as code</span> 
+                    untuk produktivitas developer maksimal.
+                </p>
+                
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto mb-12">
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="stat-number text-2xl font-bold">12+</div>
+                        <div class="text-sm text-gray-400">Services</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="stat-number text-2xl font-bold">100%</div>
+                        <div class="text-sm text-gray-400">Containerized</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="stat-number text-2xl font-bold">5min</div>
+                        <div class="text-sm text-gray-400">Setup Time</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="stat-number text-2xl font-bold">∞</div>
+                        <div class="text-sm text-gray-400">Scalable</div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="#quickstart" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-accent text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 animate-glow">
+                        🚀 Mulai Sekarang
+                    </a>
+                    <a href="#architecture" class="glass-card hover:bg-white/10 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300">
+                        📋 Lihat Arsitektur
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Floating Elements -->
+        <div class="absolute top-20 left-10 w-4 h-4 bg-primary rounded-full animate-pulse opacity-60"></div>
+        <div class="absolute top-40 right-20 w-6 h-6 bg-secondary rounded-full animate-pulse opacity-40 animation-delay-1000"></div>
+        <div class="absolute bottom-20 left-20 w-5 h-5 bg-accent rounded-full animate-pulse opacity-50 animation-delay-2000"></div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="py-20 relative">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    <span class="gradient-text">Modern Tech Stack</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Dibangun dengan teknologi terdepan untuk performance, scalability, dan developer experience yang optimal
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 max-w-6xl mx-auto">
+                <!-- Docker -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🐳</div>
+                    <div class="text-sm font-medium">Docker</div>
+                </div>
+                <!-- Traefik -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🌐</div>
+                    <div class="text-sm font-medium">Traefik</div>
+                </div>
+                <!-- Vault -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🔐</div>
+                    <div class="text-sm font-medium">Vault</div>
+                </div>
+                <!-- PostgreSQL -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🐘</div>
+                    <div class="text-sm font-medium">PostgreSQL</div>
+                </div>
+                <!-- Redis -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">⚡</div>
+                    <div class="text-sm font-medium">Redis</div>
+                </div>
+                <!-- MongoDB -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🍃</div>
+                    <div class="text-sm font-medium">MongoDB</div>
+                </div>
+                <!-- Grafana -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">📊</div>
+                    <div class="text-sm font-medium">Grafana</div>
+                </div>
+                <!-- Prometheus -->
+                <div class="tech-icon glass-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🔥</div>
+                    <div class="text-sm font-medium">Prometheus</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gradient-to-b from-transparent to-darker/50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    Fitur <span class="gradient-text">Enterprise-Grade</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Semua yang Anda butuhkan untuk menjalankan aplikasi microservices di production
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1: Containerization -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">🐳</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Full Containerization</h3>
+                    <p class="text-gray-400 mb-4">Seluruh aplikasi stack didefinisikan menggunakan Docker Compose untuk konsistensi sempurna di semua environment.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs">Docker</span>
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs">Compose</span>
+                    </div>
+                </div>
+
+                <!-- Feature 2: API Gateway -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">🌐</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Smart API Gateway</h3>
+                    <p class="text-gray-400 mb-4">Traefik sebagai reverse proxy otomatis dengan SSL termination, load balancing, dan rate limiting built-in.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-secondary/20 text-secondary rounded-full text-xs">Traefik</span>
+                        <span class="px-3 py-1 bg-secondary/20 text-secondary rounded-full text-xs">SSL</span>
+                    </div>
+                </div>
+
+                <!-- Feature 3: Secret Management -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">🔐</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Enterprise Security</h3>
+                    <p class="text-gray-400 mb-4">HashiCorp Vault untuk secret management dengan encryption at rest dan dynamic secrets generation.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs">Vault</span>
+                        <span class="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs">Secrets</span>
+                    </div>
+                </div>
+
+                <!-- Feature 4: Observability -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Full Observability</h3>
+                    <p class="text-gray-400 mb-4">Complete monitoring stack dengan Grafana, Prometheus, Loki untuk logs, dan Jaeger untuk distributed tracing.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs">Grafana</span>
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs">Prometheus</span>
+                    </div>
+                </div>
+
+                <!-- Feature 5: Developer Experience -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">⚡</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Developer Experience</h3>
+                    <p class="text-gray-400 mb-4">Makefile automation untuk semua common tasks, hot reloading, dan comprehensive development tools.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-secondary/20 text-secondary rounded-full text-xs">Makefile</span>
+                        <span class="px-3 py-1 bg-secondary/20 text-secondary rounded-full text-xs">Hot Reload</span>
+                    </div>
+                </div>
+
+                <!-- Feature 6: CI/CD Ready -->
+                <div class="feature-card glass-card p-8 rounded-2xl">
+                    <div class="text-4xl mb-4">🚀</div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Production Ready</h3>
+                    <p class="text-gray-400 mb-4">GitHub Actions workflow untuk automated testing, building, dan deployment ke staging/production environments.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs">CI/CD</span>
+                        <span class="px-3 py-1 bg-accent/20 text-accent rounded-full text-xs">GitHub Actions</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="py-20">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    <span class="gradient-text">System Architecture</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Request flow dari user hingga ke setiap service dalam ecosystem microservices
+                </p>
+            </div>
+            
+            <div class="glass-card p-8 rounded-2xl max-w-6xl mx-auto">
+                <pre class="mermaid">
+                    graph TD
+                        subgraph "🌐 Client Layer"
+                            A[👤 User Request]
+                            B[📱 Mobile App]
+                            C[💻 Web Dashboard]
+                        end
+
+                        subgraph "🚀 Prism ERP Infrastructure"
+                            D[🌐 Traefik Gateway]
+                            
+                            subgraph "🔧 Core Microservices"
+                                E[🔐 Auth Service]
+                                F[👥 User Service]
+                                G[📁 File Service]
+                                H[📬 Notification Service]
+                                I[💼 Business Logic]
+                            end
+
+                            subgraph "💾 Data Layer"
+                                J[(🐘 PostgreSQL)]
+                                K[(⚡ Redis Cache)]
+                                L[(🍃 MongoDB)]
+                                M[🗄️ MinIO S3]
+                            end
+
+                            subgraph "🛡️ Security & Config"
+                                N[🔐 HashiCorp Vault]
+                                O[⚙️ Consul Config]
+                            end
+                            
+                            subgraph "📊 Observability Stack"
+                                P[📈 Prometheus]
+                                Q[📊 Grafana Dashboards]
+                                R[📋 Loki Logs]
+                                S[🔍 Jaeger Tracing]
+                            end
+                        end
+
+                        A --> D
+                        B --> D
+                        C --> D
+                        D --> E
+                        D --> F
+                        D --> G
+                        D --> H
+                        D --> I
+                        
+                        E --> J
+                        F --> J
+                        G --> M
+                        H --> K
+                        I --> L
+                        
+                        E -.-> N
+                        F -.-> N
+                        G -.-> N
+                        H -.-> N
+                        I -.-> N
+                        
+                        E -.-> O
+                        F -.-> O
+                        G -.-> O
+                        H -.-> O
+                        I -.-> O
+                        
+                        P --> Q
+                        R --> Q
+                        S -.-> Q
+                        
+                        style D fill:#6366f1,stroke:#4f46e5,stroke-width:2px,color:#fff
+                        style N fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+                        style Q fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+                </pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Guide -->
+    <section id="quickstart" class="py-20 bg-gradient-to-b from-darker/50 to-transparent">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    Quick Start <span class="gradient-text">5 Minutes</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Jalankan seluruh infrastructure stack di local machine dengan 4 perintah simple
+                </p>
+            </div>
+            
+            <div class="max-w-4xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold mb-4">📋 Prerequisites</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                <span class="text-gray-300">Docker & Docker Compose</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-secondary rounded-full"></div>
+                                <span class="text-gray-300">Make (GNU Make)</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-accent rounded-full"></div>
+                                <span class="text-gray-300">Git</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                <span class="text-gray-300">8GB+ RAM recommended</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold mb-4">⚡ What You Get</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span class="text-gray-300">Complete microservices stack</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span class="text-gray-300">Monitoring & observability</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span class="text-gray-300">Security & secrets management</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span class="text-gray-300">Development-ready environment</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="code-block rounded-xl p-6 relative">
+                        <button class="copy-btn absolute top-4 right-4 glass-card px-3 py-1 rounded text-sm hover:bg-white/20 transition">
+                            📋 Copy
+                        </button>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-gray-400 text-sm ml-2">Terminal</span>
+                        </div>
+                        <pre><code class="text-green-400"># 1. Clone repositori monorepo utama
+git clone https://github.com/YOUR_ORG/prism-erp.git
+cd prism-erp/infra</code></pre>
+                    </div>
+                    
+                    <div class="code-block rounded-xl p-6 relative">
+                        <button class="copy-btn absolute top-4 right-4 glass-card px-3 py-1 rounded text-sm hover:bg-white/20 transition">
+                            📋 Copy
+                        </button>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-gray-400 text-sm ml-2">Configuration</span>
+                        </div>
+                        <pre><code class="text-blue-400"># 2. Setup environment configuration
+cp .env.example .env
+# Edit .env file sesuai kebutuhan environment Anda</code></pre>
+                    </div>
+                    
+                    <div class="code-block rounded-xl p-6 relative">
+                        <button class="copy-btn absolute top-4 right-4 glass-card px-3 py-1 rounded text-sm hover:bg-white/20 transition">
+                            🚀 Copy
+                        </button>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-gray-400 text-sm ml-2">Launch</span>
+                        </div>
+                        <pre><code class="text-purple-400"># 3. Jalankan seluruh stack infrastructure!
+make local-up
+
+# Tunggu beberapa menit untuk semua service siap...
+# ✅ Done! Semua service sudah running</code></pre>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-8 glass-card p-6 rounded-xl">
+                    <div class="text-2xl mb-2">🎉</div>
+                    <p class="text-gray-300 mb-4">Selamat! Infrastructure Prism ERP sudah siap digunakan.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="#services" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-accent text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
+                            🌐 Akses Services
+                        </a>
+                        <a href="https://github.com/YOUR_ORG/YOUR_REPO/wiki" target="_blank" class="glass-card hover:bg-white/10 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300">
+                            📚 Baca Dokumentasi
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Access Section -->
+    <section id="services" class="py-20">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    <span class="gradient-text">Service Dashboard</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Setelah menjalankan <code class="bg-gray-800 px-2 py-1 rounded">make local-up</code>, 
+                    semua endpoint dan dashboard ini akan tersedia
+                </p>
+            </div>
+            
+            <div class="max-w-6xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Main API -->
+                    <a href="http://localhost:8000" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🚀</div>
+                            <div class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">API</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Main Application API</h3>
+                        <p class="text-gray-400 text-sm mb-3">Core business logic dan REST endpoints</p>
+                        <div class="text-primary font-mono text-sm">localhost:8000</div>
+                    </a>
+
+                    <!-- Grafana -->
+                    <a href="http://localhost:3000" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">📊</div>
+                            <div class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">MONITORING</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Grafana Dashboards</h3>
+                        <p class="text-gray-400 text-sm mb-3">Metrics, logs, dan system monitoring</p>
+                        <div class="text-primary font-mono text-sm">admin / admin</div>
+                    </a>
+
+                    <!-- Traefik -->
+                    <a href="http://localhost:8081" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🌐</div>
+                            <div class="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">GATEWAY</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Traefik Dashboard</h3>
+                        <p class="text-gray-400 text-sm mb-3">API Gateway dan routing management</p>
+                        <div class="text-primary font-mono text-sm">localhost:8081</div>
+                    </a>
+
+                    <!-- Jaeger -->
+                    <a href="http://localhost:16686" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🔍</div>
+                            <div class="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">TRACING</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Jaeger Tracing</h3>
+                        <p class="text-gray-400 text-sm mb-3">Distributed tracing dan performance</p>
+                        <div class="text-primary font-mono text-sm">localhost:16686</div>
+                    </a>
+
+                    <!-- Vault -->
+                    <a href="http://localhost:8200" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🔐</div>
+                            <div class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">SECURITY</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">HashiCorp Vault</h3>
+                        <p class="text-gray-400 text-sm mb-3">Secrets dan credentials management</p>
+                        <div class="text-primary font-mono text-sm">root-token-for-dev</div>
+                    </a>
+
+                    <!-- Consul -->
+                    <a href="http://localhost:8500" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">⚙️</div>
+                            <div class="text-xs bg-teal-500/20 text-teal-400 px-2 py-1 rounded-full">CONFIG</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Consul Configuration</h3>
+                        <p class="text-gray-400 text-sm mb-3">Service discovery dan configuration</p>
+                        <div class="text-primary font-mono text-sm">localhost:8500</div>
+                    </a>
+
+                    <!-- MinIO -->
+                    <a href="http://localhost:9001" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🗄️</div>
+                            <div class="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full">STORAGE</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">MinIO Console</h3>
+                        <p class="text-gray-400 text-sm mb-3">S3-compatible object storage</p>
+                        <div class="text-primary font-mono text-sm">minioadmin / minioadmin</div>
+                    </a>
+
+                    <!-- Prometheus -->
+                    <a href="http://localhost:9090" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">📈</div>
+                            <div class="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">METRICS</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Prometheus</h3>
+                        <p class="text-gray-400 text-sm mb-3">Metrics collection dan queries</p>
+                        <div class="text-primary font-mono text-sm">localhost:9090</div>
+                    </a>
+
+                    <!-- Database Admin -->
+                    <a href="http://localhost:5050" target="_blank" class="service-link glass-card p-6 rounded-xl block hover:scale-105 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-3xl">🐘</div>
+                            <div class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-full">DATABASE</div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">pgAdmin</h3>
+                        <p class="text-gray-400 text-sm mb-3">PostgreSQL database administration</p>
+                        <div class="text-primary font-mono text-sm">admin@prism.local</div>
+                    </a>
+                </div>
+                
+                <!-- Health Check Status -->
+                <div class="mt-12 glass-card p-6 rounded-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-center">🔍 System Health Check</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl mb-2">⚡</div>
+                            <div class="text-sm text-gray-400">Performance</div>
+                            <div class="text-green-400 font-semibold">Optimal</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl mb-2">🛡️</div>
+                            <div class="text-sm text-gray-400">Security</div>
+                            <div class="text-green-400 font-semibold">Protected</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl mb-2">📊</div>
+                            <div class="text-sm text-gray-400">Monitoring</div>
+                            <div class="text-green-400 font-semibold">Active</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advanced Features -->
+    <section class="py-20 bg-gradient-to-b from-transparent to-darker/50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">
+                    <span class="gradient-text">Advanced Features</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    Fitur-fitur enterprise yang membuat development dan operations menjadi lebih efisien
+                </p>
+            </div>
+            
+            <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Development Tools -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-6 gradient-text">🛠️ Development Tools</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Hot Reloading</div>
+                                <div class="text-gray-400 text-sm">Auto-restart services saat code berubah</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-secondary rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Debug Support</div>
+                                <div class="text-gray-400 text-sm">Remote debugging dengan IDE integration</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-accent rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Database Migrations</div>
+                                <div class="text-gray-400 text-sm">Automated schema management</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-primary rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Testing Environment</div>
+                                <div class="text-gray-400 text-sm">Isolated test database dan services</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Production Ready -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-6 gradient-text">🚀 Production Ready</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Health Checks</div>
+                                <div class="text-gray-400 text-sm">Comprehensive service health monitoring</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Auto Scaling</div>
+                                <div class="text-gray-400 text-sm">Container orchestration ready</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">Backup Strategy</div>
+                                <div class="text-gray-400 text-sm">Automated data backup dan recovery</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <div class="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                            <div>
+                                <div class="font-semibold text-white">SSL/TLS</div>
+                                <div class="text-gray-400 text-sm">Automatic certificate management</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/10 bg-darker/80 backdrop-blur-sm">
+        <div class="container mx-auto px-4 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <img src="https://avatars.githubusercontent.com/u/212679102?s=400&u=22777bff9c391d64acdb13e7fa18fb9986a11ab4&v=4" 
+                             alt="Prism ERP Logo" 
+                             class="w-12 h-12 rounded-lg">
+                        <div>
+                            <h3 class="text-xl font-bold gradient-text">Prism ERP Infrastructure</h3>
+                            <p class="text-gray-400 text-sm">Enterprise Microservices Platform</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 max-w-md">
+                        Modern, scalable, dan production-ready infrastructure platform 
+                        untuk aplikasi enterprise dengan complete observability stack.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-4">🔗 Quick Links</h4>
+                    <div class="space-y-2">
+                        <a href="#features" class="block text-gray-400 hover:text-white transition">Features</a>
+                        <a href="#architecture" class="block text-gray-400 hover:text-white transition">Architecture</a>
+                        <a href="#quickstart" class="block text-gray-400 hover:text-white transition">Quick Start</a>
+                        <a href="#services" class="block text-gray-400 hover:text-white transition">Services</a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-4">📚 Resources</h4>
+                    <div class="space-y-2">
+                        <a href="https://github.com/YOUR_ORG/YOUR_REPO" target="_blank" class="block text-gray-400 hover:text-white transition">GitHub Repository</a>
+                        <a href="https://github.com/YOUR_ORG/YOUR_REPO/wiki" target="_blank" class="block text-gray-400 hover:text-white transition">Documentation</a>
+                        <a href="https://github.com/YOUR_ORG/YOUR_REPO/issues" target="_blank" class="block text-gray-400 hover:text-white transition">Issues & Support</a>
+                        <a href="https://github.com/YOUR_ORG/YOUR_REPO/discussions" target="_blank" class="block text-gray-400 hover:text-white transition">Community</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-white/10 mt-8 pt-8 text-center">
+                <p class="text-gray-400">
+                    © 2024 <span class="gradient-text font-semibold">Lumina Enterprise Solutions</span>. 
+                    All rights reserved.
+                </p>
+                <div class="mt-4 flex justify-center space-x-6">
+                    <a href="https://github.com/YOUR_ORG" target="_blank" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Mermaid with dark theme
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#6366f1',
+                primaryTextColor: '#ffffff',
+                primaryBorderColor: '#4f46e5',
+                lineColor: '#8b5cf6',
+                sectionBkgColor: '#1f2937',
+                altSectionBkgColor: '#374151',
+                gridColor: '#4b5563',
+                secondaryColor: '#8b5cf6',
+                tertiaryColor: '#ec4899'
+            }
+        });
+
+        // Copy button functionality with enhanced UX
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const codeElement = button.parentElement.querySelector('code');
+                const text = codeElement ? codeElement.textContent : button.parentElement.querySelector('pre').textContent;
+                
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const originalText = button.textContent;
+                    button.textContent = '✅ Copied!';
+                    button.classList.add('bg-green-500/20', 'text-green-400');
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('bg-green-500/20', 'text-green-400');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    button.textContent = '❌ Failed';
+                    setTimeout(() => {
+                        button.textContent = '📋 Copy';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add scroll-based animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe elements for animation
+        document.querySelectorAll('.feature-card, .glass-card, .tech-icon').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Add parallax effect to background elements
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelectorAll('.hero-pattern');
+            const speed = 0.5;
+            
+            parallax.forEach(element => {
+                const yPos = -(scrolled * speed);
+                element.style.transform = `translateY(${yPos}px)`;
+            });
+        });
+
+        // Add dynamic glow effect to logo
+        const logo = document.querySelector('.logo-glow');
+        if (logo) {
+            setInterval(() => {
+                logo.style.filter = `drop-shadow(0 0 ${Math.random() * 10 + 15}px rgba(99, 102, 241, ${Math.random() * 0.3 + 0.3}))`;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
