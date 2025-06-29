@@ -34,61 +34,61 @@ graph TD
     subgraph "🌐 Browser/Klien Pengguna"
         A[📱 Permintaan Pengguna<br/>Web, Mobile, API Client]
     end
-    
+
     subgraph "🐳 Infrastruktur Prism (Jaringan Docker)"
         A --> B{🚪 Traefik API Gateway<br/>Load Balancer & Reverse Proxy}
-        
+
         subgraph "⚙️ Microservices Inti"
             B --> C[🔐 Auth Service<br/>JWT, OAuth2, RBAC]
             B --> D[👤 User Service<br/>Profil, Manajemen User]
             B --> E[📁 File Service<br/>Upload, Download, CDN]
             B --> F[🔔 Notification Service<br/>Email, SMS, Push]
         end
-        
+
         subgraph "💾 Penyimpanan Data"
             C --> G[(🐘 PostgreSQL<br/>Database Utama<br/>ACID Compliant)]
             D --> G
             E --> G
-            
+
             F --> H[(⚡ Redis Cache<br/>Session Store<br/>Real-time Data)]
             C --> H
             D --> H
-            
+
             C --> I[(🍃 MongoDB<br/>Document Store<br/>Logs & Analytics)]
             D --> I
-            
+
             E --> J[(📦 MinIO S3 Storage<br/>Object Storage<br/>File Assets)]
         end
-        
+
         subgraph "🔧 Manajemen Layanan"
             K[🔒 HashiCorp Vault<br/>Secret Management<br/>Encryption Keys]
             L[⚙️ Consul<br/>Service Discovery<br/>Dynamic Configuration]
-            
+
             C & D & E & F --> K
             C & D & E & F --> L
         end
-        
+
         subgraph "📊 Tumpukan Observabilitas"
             M[📈 Prometheus<br/>Metrics Collection<br/>Alerting Rules]
-            O[📝 Loki<br/>Log Aggregation<br/>Query Engine] 
+            O[📝 Loki<br/>Log Aggregation<br/>Query Engine]
             P[🔍 Jaeger<br/>Distributed Tracing<br/>Performance Monitoring]
-            
+
             M & O & P --> N[📊 Grafana Dashboard<br/>Visualization & Analytics]
-            
+
             C & D & E & F --> M
             C & D & E & F --> O
             C & D & E & F --> P
         end
-        
+
         subgraph "🛡️ Security & Networking"
             Q[🔥 Firewall Rules<br/>Network Policies]
             R[🌐 SSL/TLS Termination<br/>Certificate Management]
             S[🚦 Rate Limiting<br/>DDoS Protection]
-            
+
             B --> Q & R & S
         end
     end
-    
+
     %% Styling untuk membuat diagram lebih menarik
     classDef database fill:#e1f5fe,stroke:#01579b,stroke-width:3px,color:#000
     classDef cache fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#000
@@ -98,7 +98,7 @@ graph TD
     classDef security fill:#fce4ec,stroke:#ad1457,stroke-width:3px,color:#000
     classDef monitoring fill:#f1f8e9,stroke:#558b2f,stroke-width:3px,color:#000
     classDef user fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,color:#000
-    
+
     class G database
     class H cache
     class I storage
@@ -138,7 +138,7 @@ Pastikan perangkat Anda telah terinstal:
 
 3.  **Jalankan Semuanya!**:
     Gunakan `Makefile` untuk membangun dan menjalankan semua layanan.
-    
+
     *   **Untuk Pengembangan (Lokal)**: Perintah ini akan membangun _image_ dari kode sumber di monorepo Anda.
         ```bash
         make local-up
@@ -184,6 +184,7 @@ Setelah menjalankan `make local-up`, Anda dapat mengakses berbagai dasbor dan UI
 | **Vault UI** | `http://localhost:8200` | Token: `root-token-for-dev` |
 | **Consul UI** | `http://localhost:8500` | - |
 | **Konsol Minio** | `http://localhost:9001` | `minioadmin` / `minioadmin` |
+| **RabbitMQ UI**       | `http://localhost:15672`       | `guest` / `guest`                     |
 
 ---
 

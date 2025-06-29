@@ -1,4 +1,4 @@
-# infra/docker-compose.yml
+# infra/docker-compose.prod.yml (FINAL)
 services:
   # Layanan Database Relasional - PostgreSQL
   db-postgres:
@@ -67,13 +67,11 @@ services:
       - prism-network
     volumes:
       - ./migrations:/migrations
-    # The command tells migrate to use the files in /migrations, connect to the postgres DB, and run 'up'.
     command: ["-path", "/migrations", "-database", "postgres://prismuser:prismpassword@db-postgres:5432/prism_erp?sslmode=disable", "up"]
     depends_on:
       db-postgres:
-        # Ensures the database is ready before trying to run migrations
         condition: service_healthy
-    restart: "no" # We only want this to run once successfully
+    restart: "no"
     profiles: ["core"]
 
   # --- API Gateway Traefik ---
@@ -232,8 +230,8 @@ services:
     build:
       context: ./vault-setup
     container_name: prism_vault_setup
-    env_file: # <-- TAMBAHKAN BLOK INI
-      - .env # <-- TAMBAHKAN BARIS INI
+    env_file:
+      - .env
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root-token-for-dev
@@ -258,8 +256,8 @@ services:
     container_name: prism_minio_storage
     hostname: minio
     ports:
-      - "9000:9000"  # API Port
-      - "9001:9001"  # Console UI Port
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: "minioadmin"
       MINIO_ROOT_PASSWORD: "minioadmin"
@@ -308,26 +306,22 @@ services:
         loki-url: "http://localhost:3100/loki/api/v1/push"
     environment:
       - GIN_MODE=release
-      # Variabel untuk bootstrapping, service akan mengambil sisanya sendiri
       - SERVICE_NAME=prism-auth-service
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root-token-for-dev
       - CONSUL_ADDR=consul:8500
     labels:
       - "traefik.enable=true"
-      # --- Router untuk Login/Register (Prioritas Tinggi & Rate Limit Ketat) ---
       - "traefik.http.routers.auth-login.rule=PathPrefix(`/auth/login`) || PathPrefix(`/auth/register`)"
       - "traefik.http.routers.auth-login.entrypoints=web"
       - "traefik.http.routers.auth-login.priority=11"
       - "traefik.http.routers.auth-login.middlewares=security-headers@file,cors-policy@file,login-rate-limit@file,service-circuit-breaker@file"
       - "traefik.http.routers.auth-login.service=auth-service"
-      # --- Router Umum untuk /auth (Prioritas Rendah & Rate Limit Global) ---
       - "traefik.http.routers.auth-service.rule=PathPrefix(`/auth`)"
       - "traefik.http.routers.auth-service.entrypoints=web"
       - "traefik.http.routers.auth-service.priority=10"
       - "traefik.http.routers.auth-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
       - "traefik.http.routers.auth-service.service=auth-service"
-      # --- Definisi Service ---
       - "traefik.http.services.auth-service.loadbalancer.server.port=8080"
     depends_on:
       db-postgres:
@@ -336,7 +330,7 @@ services:
         condition: service_completed_successfully
       consul:
         condition: service_healthy
-      migrate: # <-- CHANGE THIS
+      migrate:
         condition: service_completed_successfully
     networks:
       - prism-network
@@ -358,11 +352,9 @@ services:
       - CONSUL_ADDR=consul:8500
     labels:
       - "traefik.enable=true"
-      # --- Router ---
       - "traefik.http.routers.user-service.rule=PathPrefix(`/users`)"
       - "traefik.http.routers.user-service.entrypoints=web"
       - "traefik.http.routers.user-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
-      # --- Definisi Service ---
       - "traefik.http.services.user-service.loadbalancer.server.port=8080"
     depends_on:
       db-postgres:
@@ -371,15 +363,34 @@ services:
         condition: service_completed_successfully
       consul:
         condition: service_healthy
-      migrate: # <-- CHANGE THIS
+      migrate:
         condition: service_completed_successfully
     networks:
       - prism-network
     profiles: ["core"]
 
+  # --- Antrian Pesan (Message Broker) ---
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: prism_rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"    # Port AMQP untuk aplikasi
+      - "15672:15672"  # Port Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - prism-network
+    profiles: ["core", "monitoring"]
+
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:latest
+    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:1.0.1
     container_name: prism_notification_service
     logging:
       driver: loki
@@ -388,23 +399,22 @@ services:
     environment:
       - GIN_MODE=release
       - SERVICE_NAME=prism-notification-service
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/ # <-- PERUBAHAN
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root-token-for-dev
       - CONSUL_ADDR=consul:8500
     labels:
       - "traefik.enable=true"
-      # --- Router ---
       - "traefik.http.routers.notification-service.rule=PathPrefix(`/notifications`)"
       - "traefik.http.routers.notification-service.entrypoints=web"
       - "traefik.http.routers.notification-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
-      # --- Definisi Service ---
       - "traefik.http.services.notification-service.loadbalancer.server.port=8080"
     depends_on:
       vault-setup:
         condition: service_completed_successfully
       consul:
         condition: service_healthy
-      cache-redis:
+      rabbitmq: # <-- PERUBAHAN
         condition: service_started
     networks:
       - prism-network
@@ -432,7 +442,6 @@ services:
       - "traefik.http.routers.file-service.entrypoints=web"
       - "traefik.http.routers.file-service.service=file-service"
       - "traefik.http.routers.file-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
-      # FIX: Ubah port load balancer Traefik ke 8080
       - "traefik.http.services.file-service.loadbalancer.server.port=8080"
     depends_on:
       db-postgres:
@@ -448,7 +457,6 @@ services:
     networks:
       - prism-network
     healthcheck:
-      # FIX: Ubah port healthcheck ke 8080
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/files/health || exit 1"]
       interval: 10s
       timeout: 5s
@@ -474,4 +482,6 @@ volumes:
   file_storage_data:
     driver: local
   minio_data:
+    driver: local
+  rabbitmq_data:
     driver: local

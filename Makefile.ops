@@ -1,0 +1,117 @@
+# Makefile for daily Git & GitHub Operations
+# Author: Lumina Enterprise Solutions
+# ==============================================================================
+# This Makefile standardizes the git workflow for all developers.
+#
+# Usage:
+#   make <target>
+#   Example: make feature name=login-page
+# ==============================================================================
+
+# --- Konfigurasi ---
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+
+# Variabel Cabang Utama
+MAIN_BRANCH    := main
+DEVELOP_BRANCH := develop
+REMOTE         := origin
+
+# === PERBAIKAN DI SINI ===
+# Variabel ini secara otomatis menangkap nama file makefile ini
+# Ini memastikan panggilan rekursif menggunakan file yang benar.
+OPS_MAKEFILE   := $(firstword $(MAKEFILE_LIST))
+
+# Deteksi otomatis owner dan repo dari URL remote git
+# Mendukung format https:// dan git@
+GIT_URL         := $(shell git remote get-url $(REMOTE))
+PROJECT_OWNER   := $(shell echo $(GIT_URL) | sed -n 's/.*github.com[:\/]\([^/]*\)\/.*/\1/p')
+PROJECT_REPO    := $(shell echo $(GIT_URL) | sed -n 's/.*github.com[:\/][^/]*\/\(.*\)\.git/\1/p')
+CURRENT_BRANCH  := $(shell git rev-parse --abbrev-ref HEAD)
+
+
+.PHONY: help sync feature bugfix hotfix update pr cleanup status log
+
+help: ## 💬 Menampilkan pesan bantuan ini.
+	@echo -e "Makefile untuk Operasional Git & GitHub\n"
+	@echo "Usage: make [target] [arg=value]"
+	@awk 'BEGIN {FS = ":.*?## "}; /^[\.a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# ==============================================================================
+# ✨ --- ALUR KERJA UTAMA ---
+# ==============================================================================
+
+sync: ## 🔄 Sinkronisasi: membuat branch 'main' dan 'develop' lokal sama persis dengan remote.
+	@echo "🔄 Mensinkronkan branch utama dari remote '$(REMOTE)'..."
+	@git checkout $(MAIN_BRANCH) > /dev/null 2>&1 || git checkout -b $(MAIN_BRANCH) $(REMOTE)/$(MAIN_BRANCH)
+	@git fetch $(REMOTE)
+	@echo " -> Menyelaraskan '$(MAIN_BRANCH)'..."
+	@git reset --hard $(REMOTE)/$(MAIN_BRANCH)
+	@echo " -> Menyelaraskan '$(DEVELOP_BRANCH)'..."
+	@git checkout $(DEVELOP_BRANCH)
+	@git reset --hard $(REMOTE)/$(DEVELOP_BRANCH)
+	@echo "✅ Sinkronisasi selesai. Anda sekarang berada di branch '$(DEVELOP_BRANCH)'."
+
+feature: ## 🚀 Fitur Baru: membuat branch fitur baru dari 'develop' (contoh: make feature name=nama-fitur).
+	@if [ -z "$(name)" ]; then \
+		echo "❌ Error: Nama branch harus diisi. Contoh: make feature name=nama-fitur-baru"; \
+		exit 1; \
+	fi
+	@echo "🚀 Membuat branch fitur baru: feature/$(name)"
+	@$(MAKE) -f $(OPS_MAKEFILE) sync
+	@git checkout -b feature/$(name) $(DEVELOP_BRANCH)
+
+bugfix: ## 🐛 Perbaikan Bug: membuat branch bugfix baru dari 'develop' (contoh: make bugfix name=nama-bug).
+	@if [ -z "$(name)" ]; then \
+		echo "❌ Error: Nama branch harus diisi. Contoh: make bugfix name=nama-bug"; \
+		exit 1; \
+	fi
+	@echo "🐛 Membuat branch bugfix baru: bugfix/$(name)"
+	@$(MAKE) -f $(OPS_MAKEFILE) sync
+	@git checkout -b bugfix/$(name) $(DEVELOP_BRANCH)
+
+hotfix: ## 🔥 Hotfix: membuat branch hotfix baru dari 'main' (contoh: make hotfix name=fix-kritis).
+	@if [ -z "$(name)" ]; then \
+		echo "❌ Error: Nama branch harus diisi. Contoh: make hotfix name=fix-kritis"; \
+		exit 1; \
+	fi
+	@echo "🔥 Membuat branch hotfix baru: hotfix/$(name)"
+	@$(MAKE) -f $(OPS_MAKEFILE) sync
+	@git checkout -b hotfix/$(name) $(MAIN_BRANCH)
+
+
+update: ## 📥 Update Branch: mengambil perubahan terbaru dari 'develop' dan me-rebase ke branch saat ini.
+	@echo "📥 Mengupdate branch '$(CURRENT_BRANCH)' dengan perubahan dari '$(DEVELOP_BRANCH)'..."
+	@$(MAKE) -f $(OPS_MAKEFILE) sync
+	@git checkout $(CURRENT_BRANCH)
+	@git rebase $(DEVELOP_BRANCH)
+	@echo "✅ Branch '$(CURRENT_BRANCH)' telah di-rebase dengan sukses."
+
+pr: pull-request ## 💌 Pull Request: membuat Pull Request di GitHub dari branch saat ini (memerlukan 'gh' cli).
+pull-request:
+	@echo "💌 Membuka halaman pembuatan Pull Request untuk branch '$(CURRENT_BRANCH)'..."
+	@if ! command -v gh &> /dev/null; then \
+		echo "❌ Error: GitHub CLI ('gh') tidak ditemukan. Silakan install dari https://cli.github.com/"; \
+		echo "Membuka URL fallback di browser..."; \
+		open "https://github.com/$(PROJECT_OWNER)/$(PROJECT_REPO)/pull/new/$(CURRENT_BRANCH)"; \
+		exit 1; \
+	fi
+	@gh pr create --web --base $(DEVELOP_BRANCH)
+
+# ==============================================================================
+# 🧹 --- PEMBERSIHAN & UTILITAS ---
+# ==============================================================================
+
+cleanup: ## 🧹 Bersihkan: menghapus branch lokal yang sudah di-merge ke 'develop'.
+	@echo "🧹 Membersihkan branch lokal yang sudah di-merge..."
+	@$(MAKE) -f $(OPS_MAKEFILE) sync
+	@git branch --merged $(DEVELOP_BRANCH) | grep -v '^\* \| $(DEVELOP_BRANCH)\| $(MAIN_BRANCH)' | xargs -r git branch -d
+	@echo " -> Membersihkan referensi remote yang sudah dihapus..."
+	@git remote prune $(REMOTE)
+	@echo "✅ Pembersihan selesai."
+
+status: ## ℹ️ Status: menampilkan status git secara ringkas.
+	@git status -s
+
+log: ## 📜 Log: menampilkan riwayat commit dalam format yang lebih rapi.
+	@git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --all
