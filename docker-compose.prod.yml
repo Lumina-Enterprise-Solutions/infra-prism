@@ -1,4 +1,4 @@
-# infra/docker-compose.prod.yml (FINAL)
+# infra/docker-compose.prod.yml (FIXED)
 services:
   # Layanan Database Relasional - PostgreSQL
   db-postgres:
@@ -67,7 +67,11 @@ services:
       - prism-network
     volumes:
       - ./migrations:/migrations
-    command: ["-path", "/migrations", "-database", "postgres://prismuser:prismpassword@db-postgres:5432/prism_erp?sslmode=disable", "up"]
+    # ## PERBAIKAN 1.1: Gunakan environment variables, bukan hardcoded credentials ##
+    # Perintah ini sekarang aman dan mengambil kredensial dari file .env Anda.
+    command: >
+      -path /migrations -database
+      "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable" up
     depends_on:
       db-postgres:
         condition: service_healthy
@@ -205,20 +209,28 @@ services:
       retries: 5
     profiles: ["core"]
 
-  # --- Layanan Secret Management - Vault ---
+  # ## PERBAIKAN 1.2: Jangan jalankan Vault dalam mode `-dev` untuk produksi. ##
+  # Mode `-dev` TIDAK AMAN dan TIDAK PERSISTEN.
+  # Layanan Vault produksi yang sesungguhnya memerlukan setup dan proses unseal yang lebih kompleks.
   vault:
     image: hashicorp/vault:1.19
     container_name: prism_vault
     ports:
       - "8200:8200"
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: "root-token-for-dev"
-      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_ADDR: "http://0.0.0.0:8200" # Diakses dari luar
+      VAULT_API_ADDR: "http://vault:8200" # Diakses oleh kontainer lain
+      # PERINGATAN: Di produksi, token ini tidak boleh dihardcode.
+      # Proses Unseal harus digunakan untuk mendapatkan token secara aman.
+      VAULT_TOKEN: "${VAULT_TOKEN:-root-token-for-dev}"
     cap_add:
       - IPC_LOCK
     networks:
       - prism-network
-    command: "server -dev -dev-root-token-id=root-token-for-dev -dev-listen-address=0.0.0.0:8200"
+    # Command ini akan menjalankan Vault server dengan konfigurasi default (yang perlu dibuat di dalam volume).
+    # Untuk contoh ini, Vault tidak akan start dengan benar tanpa file config, dan itu LEBIH BAIK
+    # daripada menjalankannya dalam mode tidak aman.
+    command: "server"
     logging:
       driver: loki
       options:
@@ -298,7 +310,7 @@ services:
 
   # Layanan Aplikasi - Prism Auth Service
   auth-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-auth-service:latest
+    image: ghcr.io/lumina-enterprise-solutions/prism-auth-service:${AUTH_SERVICE_VERSION:-latest}
     container_name: prism_auth_service
     logging:
       driver: loki
@@ -338,7 +350,7 @@ services:
 
   # Layanan Aplikasi - Prism User Service
   user-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-user-service:latest
+    image: ghcr.io/lumina-enterprise-solutions/prism-user-service:${USER_SERVICE_VERSION:-latest}
     container_name: prism_user_service
     logging:
       driver: loki
@@ -381,16 +393,48 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq/
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    # FIX: Add environment variables to load definitions.json on startup
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq.conf
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit load_definitions '/etc/rabbitmq/definitions.json'"
     networks:
       - prism-network
     profiles: ["core", "monitoring"]
 
+  # Layanan Aplikasi - Prism Invitation Service
+  invitation-service:
+    image: ghcr.io/lumina-enterprise-solutions/prism-invitation-service:${INVITATION_SERVICE_VERSION:-latest}
+    container_name: prism_invitation_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-invitation-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.invitation-service.rule=PathPrefix(`/invitations`)"
+      - "traefik.http.routers.invitation-service.entrypoints=web"
+      - "traefik.http.routers.invitation-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      - "traefik.http.services.invitation-service.loadbalancer.server.port=8080"
+    depends_on:
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+    networks:
+      - prism-network
+    profiles: ["core"]
+
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:latest
+    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:${NOTIFICATION_SERVICE_VERSION:-latest}
     container_name: prism_notification_service
     logging:
       driver: loki
@@ -399,7 +443,7 @@ services:
     environment:
       - GIN_MODE=release
       - SERVICE_NAME=prism-notification-service
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/ # <-- PERUBAHAN
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root-token-for-dev
       - CONSUL_ADDR=consul:8500
@@ -414,7 +458,7 @@ services:
         condition: service_completed_successfully
       consul:
         condition: service_healthy
-      rabbitmq: # <-- PERUBAHAN
+      rabbitmq:
         condition: service_started
     networks:
       - prism-network
@@ -422,7 +466,7 @@ services:
 
   # Layanan Aplikasi - Prism File Service
   file-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-file-service:latest
+    image: ghcr.io/lumina-enterprise-solutions/prism-file-service:${FILE_SERVICE_VERSION:-latest}
     container_name: prism_file_service
     logging:
       driver: loki

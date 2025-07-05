@@ -27,15 +27,19 @@ prune: ## 🗑️ Remove all unused containers, networks, and dangling images
 
 
 # --- Local Environment Commands ---
-.PHONY: local-up local-down local-restart local-logs local-clean local-migrate-up local-migrate-down
+.PHONY: local-up local-up-build local-down local-restart local-logs local-clean local-migrate-up local-migrate-down
 
 local-up: ## 🚀 [LOCAL] Start all local services
 	@echo "Starting up local services..."
 	docker compose $(COMPOSE_LOCAL) $(PROFILES) up -d --remove-orphans
 
+local-up-build: ## 🚀 [LOCAL] Start all local services
+	@echo "Starting up local services..."
+	docker compose $(COMPOSE_LOCAL) $(PROFILES) up -d --build --remove-orphans
+
 local-down: ## ⏹️ [LOCAL] Stop and remove local services
 	@echo "Stopping local services..."
-	docker compose $(COMPOSE_LOCAL) down
+	docker-compose $(COMPOSE_LOCAL) $(PROFILES) down
 
 local-restart: ## 🔄 [LOCAL] Restart all local services
 	$(MAKE) local-down
@@ -47,14 +51,14 @@ ifdef s
 	@docker compose $(COMPOSE_LOCAL) logs -f $(s)
 else
 	@echo "Showing logs for all local services..."
-	@docker compose $(COMPOSE_LOCAL) logs -f
+	@docker compose $(COMPOSE_LOCAL) $(PROFILES) logs -f
 endif
 
 local-clean: ## 🧹 [LOCAL] Stop services and REMOVE ALL DATA VOLUMES. USE WITH CAUTION!
 	@read -p "🚨 This will delete all LOCAL data (Postgres, Redis, etc). Are you sure? [y/N] " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo "Cleaning up local environment..."; \
-		docker compose $(COMPOSE_LOCAL) down -v; \
+		docker compose $(COMPOSE_LOCAL) $(PROFILES) down -v; \
 	else \
 		echo "Cleanup cancelled."; \
 	fi
@@ -77,7 +81,7 @@ prod-up: ## 🚀 [PROD] Start all production services
 
 prod-down: ## ⏹️ [PROD] Stop and remove production services
 	@echo "Stopping production services..."
-	docker compose $(COMPOSE_PROD) down
+	docker compose $(COMPOSE_PROD) $(PROFILES) down
 
 prod-restart: ## 🔄 [PROD] Restart all production services
 	$(MAKE) prod-down
@@ -89,14 +93,14 @@ ifdef s
 	@docker compose $(COMPOSE_PROD) logs -f $(s)
 else
 	@echo "Showing logs for all production services..."
-	@docker compose $(COMPOSE_PROD) logs -f
+	@docker compose $(COMPOSE_PROD) $(PROFILES) logs -f
 endif
 
 prod-clean: ## 🧹 [PROD] Stop services and REMOVE ALL DATA VOLUMES. USE WITH CAUTION!
 	@read -p "🚨 This will delete all PRODUCTION data (Postgres, Redis, etc). Are you sure? [y/N] " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo "Cleaning up production environment..."; \
-		docker compose $(COMPOSE_PROD) down -v; \
+		docker compose $(COMPOSE_PROD) $(PROFILES) down -v; \
 	else \
 		echo "Cleanup cancelled."; \
 	fi

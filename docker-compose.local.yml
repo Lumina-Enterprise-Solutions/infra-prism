@@ -1,4 +1,4 @@
-# infra/docker-compose.yml
+# infra/docker-compose.local.yml (FIXED)
 services:
   # Layanan Database Relasional - PostgreSQL
   db-postgres:
@@ -67,11 +67,13 @@ services:
       - prism-network
     volumes:
       - ./migrations:/migrations
-    # The command tells migrate to use the files in /migrations, connect to the postgres DB, and run 'up'.
-    command: ["-path", "/migrations", "-database", "postgres://prismuser:prismpassword@db-postgres:5432/prism_erp?sslmode=disable", "up"]
+    # ## PERBAIKAN 1.1: Gunakan environment variables, bukan hardcoded credentials ##
+    # Perintah ini sekarang aman dan mengambil kredensial dari file .env Anda.
+    command: >
+      -path /migrations -database
+      "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable" up
     depends_on:
       db-postgres:
-        # Ensures the database is ready before trying to run migrations
         condition: service_healthy
     restart: "no" # We only want this to run once successfully
     profiles: ["core"]
@@ -380,11 +382,63 @@ services:
       - prism-network
     profiles: ["core"]
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: prism_rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"    # Port AMQP untuk aplikasi
+      - "15672:15672"  # Port Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      # --- GANTI BLOK ENVIRONMENT DENGAN INI ---
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq.conf
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit load_definitions '/etc/rabbitmq/definitions.json'"
+      # --- AKHIR PERUBAHAN ---
+    networks:
+      - prism-network
+    profiles: ["core", "monitoring"]
+
+  invitation-service:
+    build:
+      context: ..
+      dockerfile: services/prism-invitation-service/Dockerfile.mono
+    container_name: prism_invitation_service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    environment:
+      - GIN_MODE=release
+      - SERVICE_NAME=prism-invitation-service
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root-token-for-dev
+      - CONSUL_ADDR=consul:8500
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.invitation-service.rule=PathPrefix(`/invitations`)"
+      - "traefik.http.routers.invitation-service.entrypoints=web"
+      - "traefik.http.routers.invitation-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
+      - "traefik.http.services.invitation-service.loadbalancer.server.port=8080"
+    depends_on:
+      vault-setup:
+        condition: service_completed_successfully
+      consul:
+        condition: service_healthy
+    networks:
+      - prism-network
+    profiles: ["core"]
+
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
     build:
       context: ..
-      dockerfile: services/prism-notification-service/Dockerfile.mono
+      dockerfile: services/prism-invitation-service/Dockerfile.mono
     container_name: prism_notification_service
     logging:
       driver: loki
@@ -393,23 +447,22 @@ services:
     environment:
       - GIN_MODE=release
       - SERVICE_NAME=prism-notification-service
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/ # <-- PERUBAHAN
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root-token-for-dev
       - CONSUL_ADDR=consul:8500
     labels:
       - "traefik.enable=true"
-      # --- Router ---
       - "traefik.http.routers.notification-service.rule=PathPrefix(`/notifications`)"
       - "traefik.http.routers.notification-service.entrypoints=web"
       - "traefik.http.routers.notification-service.middlewares=security-headers@file,cors-policy@file,global-rate-limit@file,service-circuit-breaker@file"
-      # --- Definisi Service ---
       - "traefik.http.services.notification-service.loadbalancer.server.port=8080"
     depends_on:
       vault-setup:
         condition: service_completed_successfully
       consul:
         condition: service_healthy
-      cache-redis:
+      rabbitmq: # <-- PERUBAHAN
         condition: service_started
     networks:
       - prism-network
@@ -481,4 +534,6 @@ volumes:
   file_storage_data:
     driver: local
   minio_data:
+    driver: local
+  rabbitmq_data:
     driver: local
