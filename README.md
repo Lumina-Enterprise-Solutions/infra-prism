@@ -14,6 +14,7 @@ Tumpukan infrastruktur kami kaya akan fitur dan dibangun di atas teknologi terde
 -   🔀 **API Gateway Cerdas**: [Traefik](httpsa://traefik.io/traefik/) sebagai _reverse proxy_ dan API gateway, menangani perutean, keamanan, dan _rate limiting_.
 -   **Broker Pesan**: [RabbitMQ](https://www.rabbitmq.com/) untuk komunikasi asinkron dan arsitektur berbasis peristiwa (event-driven).
 -   🗃️ **Penyimpanan Data Poliglot**: PostgreSQL (Relasional), Redis (Cache), dan [Minio](https://min.io/) (Object Storage S3) untuk kebutuhan data yang beragam.
+-   **Service Mesh Ready**: Fondasi untuk [Istio](https://istio.io/) atau [Linkerd](https://linkerd.io/) untuk mTLS, _canary deployments_, dan observabilitas tingkat lanjut.
 -   🔑 **Manajemen Konfigurasi & Rahasia**: [Consul](https://www.consul.io/) untuk konfigurasi dinamis dan [HashiCorp Vault](https://www.vaultproject.io/) untuk manajemen rahasia yang aman.
 -   🔭 **Tumpukan Observabilitas Lengkap**:
     -   [Prometheus](https://prometheus.io/) untuk pengumpulan metrik.
@@ -177,6 +178,7 @@ Memperbarui daftar dengan layanan baru dan port yang relevan.
 | Layanan | URL | Kredensial (jika ada) |
 | :--- | :--- | :--- |
 | **API Aplikasi** | `http://localhost:8000` | - |
+| **Dokumentasi API (Contoh)** | `http://localhost:8000/auth/swagger/index.html` | - |
 | **Grafana** | `http://localhost:3000` | `admin` / `admin` |
 | **Dasbor Traefik** | `http://localhost:8081` | - |
 | **Jaeger Tracing** | `http://localhost:16686` | - |

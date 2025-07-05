@@ -69,19 +69,10 @@ http:
         fallbackDuration: "20s"
         # Durasi mode recovery
         recoveryDuration: "10s"
-    # --- Optional: Auth middleware example ---
-    # auth-forward:
-    #   forwardAuth:
-    #     address: "http://auth-service:8080/auth"
-    #     authResponseHeaders:
-    #       - "X-User-Id"
-    #       - "X-User-Role"
-
-    # --- Optional: IP whitelist example ---
-    # ip-whitelist:
-    #   ipWhiteList:
-    #     sourceRange:
-    #       - "127.0.0.1/32"
-    #       - "10.0.0.0/8"
-    #       - "172.16.0.0/12"
-    #       - "192.168.0.0/16"
+    swagger-stripprefix:
+      stripPrefix:
+        # Menghapus /auth/swagger dari path sebelum meneruskan ke service.
+        # Ini penting agar service bisa menemukan handler di /swagger/index.html
+        # bukan di /auth/swagger/swagger/index.html.
+        prefixes:
+        - "/auth/swagger"

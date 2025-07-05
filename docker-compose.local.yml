@@ -298,6 +298,7 @@ services:
 
   # --- Layanan Aplikasi ---
 
+
   # Layanan Aplikasi - Prism Auth Service
   auth-service:
     build:
@@ -345,6 +346,15 @@ services:
       - prism-network
     profiles: ["core"]
 
+  auth-service-sidecar-proxy:
+    image: istio/proxyv2:1.26.2
+    container_name: prism_auth_service_proxy
+    depends_on:
+      - auth-service
+    networks:
+      - prism-network
+    profiles: ["core"]
+
   # Layanan Aplikasi - Prism User Service
   user-service:
     build:
@@ -378,6 +388,15 @@ services:
         condition: service_healthy
       migrate: # <-- CHANGE THIS
         condition: service_completed_successfully
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  user-service-sidecar-proxy:
+    image: istio/proxyv2:1.26.2
+    container_name: prism_user_service_proxy
+    depends_on:
+      - user-service
     networks:
       - prism-network
     profiles: ["core"]
@@ -434,6 +453,15 @@ services:
       - prism-network
     profiles: ["core"]
 
+  invitation-service-sidecar-proxy:
+    image: istio/proxyv2:1.24.1
+    container_name: prism_invitation_service_proxy
+    depends_on:
+      - invitation-service
+    networks:
+      - prism-network
+    profiles: ["core"]
+
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
     build:
@@ -464,6 +492,15 @@ services:
         condition: service_healthy
       rabbitmq: # <-- PERUBAHAN
         condition: service_started
+    networks:
+      - prism-network
+    profiles: ["core"]
+
+  notification-service-sidecar-proxy:
+    image: istio/proxyv2:1.26.2
+    container_name: prism_notification_service_proxy
+    depends_on:
+      - notification-service
     networks:
       - prism-network
     profiles: ["core"]
@@ -514,6 +551,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    profiles: ["core"]
+
+  file-service-sidecar-proxy:
+    image: istio/proxyv2:1.26.2
+    container_name: prism_file_service_proxy
+    depends_on:
+      - file-service
+    networks:
+      - prism-network
     profiles: ["core"]
 
 networks:
