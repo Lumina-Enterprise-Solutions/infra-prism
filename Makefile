@@ -27,11 +27,15 @@ prune: ## 🗑️ Remove all unused containers, networks, and dangling images
 
 
 # --- Local Environment Commands ---
-.PHONY: local-up local-down local-restart local-logs local-clean local-migrate-up local-migrate-down
+.PHONY: local-up local-up-build local-down local-restart local-logs local-clean local-migrate-up local-migrate-down
 
 local-up: ## 🚀 [LOCAL] Start all local services
 	@echo "Starting up local services..."
 	docker compose $(COMPOSE_LOCAL) $(PROFILES) up -d --remove-orphans
+
+local-up-build: ## 🚀 [LOCAL] Start all local services
+	@echo "Starting up local services..."
+	docker compose $(COMPOSE_LOCAL) $(PROFILES) up -d --build --remove-orphans
 
 local-down: ## ⏹️ [LOCAL] Stop and remove local services
 	@echo "Stopping local services..."

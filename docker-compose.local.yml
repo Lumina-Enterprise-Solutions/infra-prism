@@ -436,7 +436,9 @@ services:
 
   # Layanan Aplikasi - Prism Notification Service
   notification-service:
-    image: ghcr.io/lumina-enterprise-solutions/prism-notification-service:latest
+    build:
+      context: ..
+      dockerfile: services/prism-invitation-service/Dockerfile.mono
     container_name: prism_notification_service
     logging:
       driver: loki

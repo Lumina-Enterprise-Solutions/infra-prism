@@ -12,81 +12,81 @@ Tumpukan infrastruktur kami kaya akan fitur dan dibangun di atas teknologi terde
 
 -   🐳 **Kontainerisasi**: Seluruh tumpukan aplikasi didefinisikan dalam `docker-compose.yml` untuk portabilitas dan konsistensi.
 -   🔀 **API Gateway Cerdas**: [Traefik](httpsa://traefik.io/traefik/) sebagai _reverse proxy_ dan API gateway, menangani perutean, keamanan, dan _rate limiting_.
--   🗃️ **Penyimpanan Data Poliglot**: PostgreSQL (Relasional), Redis (Cache), MongoDB (Dokumen), dan [Minio](https://min.io/) (Object Storage S3) untuk kebutuhan data yang beragam.
+-   **Broker Pesan**: [RabbitMQ](https://www.rabbitmq.com/) untuk komunikasi asinkron dan arsitektur berbasis peristiwa (event-driven).
+-   🗃️ **Penyimpanan Data Poliglot**: PostgreSQL (Relasional), Redis (Cache), dan [Minio](https://min.io/) (Object Storage S3) untuk kebutuhan data yang beragam.
 -   🔑 **Manajemen Konfigurasi & Rahasia**: [Consul](https://www.consul.io/) untuk konfigurasi dinamis dan [HashiCorp Vault](https://www.vaultproject.io/) untuk manajemen rahasia yang aman.
 -   🔭 **Tumpukan Observabilitas Lengkap**:
     -   [Prometheus](https://prometheus.io/) untuk pengumpulan metrik.
     -   [Grafana](https://grafana.com/) untuk visualisasi dan dasbor.
     -   [Loki](https://grafana.com/oss/loki/) untuk agregasi log.
     -   [Jaeger](https://www.jaegertracing.io/) untuk _distributed tracing_.
-    -   [cAdvisor](https://github.com/google/cadvisor) untuk metrik performa kontainer.
 -   🤖 **Otomatisasi Alur Kerja**: `Makefile` yang intuitif untuk menyederhanakan perintah-perintah umum.
--   🔄 **CI/CD Terintegrasi**: Pipeline GitHub Actions untuk penerapan otomatis ke server pengembangan.
+-   🔄 **CI/CD Terintegrasi**: Pipeline GitHub Actions untuk pengujian otomatis (unit, integrasi, E2E) dan penerapan ke server pengembangan.
 
 ---
 
 ## 🏗️ Sekilas Arsitektur
 
-Permintaan pengguna mengalir melalui Traefik API Gateway, yang kemudian mengarahkannya ke microservice yang sesuai. Setiap layanan berinteraksi dengan datastore yang dibutuhkan dan dikelola oleh Vault dan Consul, sementara seluruh aktivitas dipantau oleh tumpukan observabilitas kami.
+Permintaan pengguna mengalir melalui Traefik API Gateway, yang kemudian mengarahkannya ke microservice yang sesuai. Layanan dapat berkomunikasi secara sinkron (gRPC) atau asinkron melalui RabbitMQ.
 
 ```mermaid
 graph TD
-    subgraph "🌐 Browser/Klien Pengguna"
-        A[📱 Permintaan Pengguna<br/>Web, Mobile, API Client]
+    subgraph "🌐 Client Layer"
+        A[📱 User<br/>Web/Mobile App]
     end
 
     subgraph "🐳 Infrastruktur Prism (Jaringan Docker)"
-        A --> B{🚪 Traefik API Gateway<br/>Load Balancer & Reverse Proxy}
+        A --> B{🚪 Traefik API Gateway<br/>Load Balancer & Reverse Proxy};
 
         subgraph "⚙️ Microservices Inti"
-            B --> C[🔐 Auth Service<br/>JWT, OAuth2, RBAC]
-            B --> D[👤 User Service<br/>Profil, Manajemen User]
-            B --> E[📁 File Service<br/>Upload, Download, CDN]
-            B --> F[🔔 Notification Service<br/>Email, SMS, Push]
+            B --> C[🔐 Auth Service<br/>JWT, SSO SAML, OAuth2];
+            B --> D[👤 User Service<br/>Profil, RBAC, ABAC, Tim];
+            B --> E[📁 File Service<br/>Upload, Download, CDN];
+            B --> F[📨 Invitation Service<br/>Manajemen Undangan];
+            G[🔔 Notification Service<br/>Email, WebSocket];
+        end
+
+        subgraph "📨 Message Broker"
+            H[🐇 RabbitMQ<br/>Event Bus]
         end
 
         subgraph "💾 Penyimpanan Data"
-            C --> G[(🐘 PostgreSQL<br/>Database Utama<br/>ACID Compliant)]
-            D --> G
-            E --> G
-
-            F --> H[(⚡ Redis Cache<br/>Session Store<br/>Real-time Data)]
-            C --> H
-            D --> H
-
-            C --> I[(🍃 MongoDB<br/>Document Store<br/>Logs & Analytics)]
-            D --> I
-
-            E --> J[(📦 MinIO S3 Storage<br/>Object Storage<br/>File Assets)]
+            I[(🐘 PostgreSQL<br/>Database Utama)]
+            J[(⚡ Redis Cache<br/>Session & Token Store)]
+            K[(📦 MinIO S3<br/>Object Storage)]
         end
 
-        subgraph "🔧 Manajemen Layanan"
-            K[🔒 HashiCorp Vault<br/>Secret Management<br/>Encryption Keys]
-            L[⚙️ Consul<br/>Service Discovery<br/>Dynamic Configuration]
-
-            C & D & E & F --> K
-            C & D & E & F --> L
+        subgraph "🔧 Manajemen & Keamanan"
+            L[🔒 Vault<br/>Secret Management]
+            M[⚙️ Consul<br/>Service Discovery & Config]
         end
 
-        subgraph "📊 Tumpukan Observabilitas"
-            M[📈 Prometheus<br/>Metrics Collection<br/>Alerting Rules]
-            O[📝 Loki<br/>Log Aggregation<br/>Query Engine]
-            P[🔍 Jaeger<br/>Distributed Tracing<br/>Performance Monitoring]
-
-            M & O & P --> N[📊 Grafana Dashboard<br/>Visualization & Analytics]
-
-            C & D & E & F --> M
-            C & D & E & F --> O
-            C & D & E & F --> P
+        subgraph "📊 Observabilitas"
+            N[📊 Grafana<br/>Dashboards]
+            O[📈 Prometheus<br/>Metrics]
+            P[📋 Loki<br/>Logs]
+            Q[🔍 Jaeger<br/>Tracing]
         end
 
-        subgraph "🛡️ Security & Networking"
-            Q[🔥 Firewall Rules<br/>Network Policies]
-            R[🌐 SSL/TLS Termination<br/>Certificate Management]
-            S[🚦 Rate Limiting<br/>DDoS Protection]
+        %% Flow Sinkron
+        C --> D;
+        D --> C;
+        D --> E;
 
-            B --> Q & R & S
-        end
+        %% Flow Asinkron (Event-Driven)
+        F -- Event 'InvitationCreated' --> H;
+        E -- Event 'ImageUploaded' --> H;
+        H -- Event 'SendEmail' --> G;
+
+        %% Koneksi ke Data Layer
+        C --> I & J;
+        D --> I & L & M;
+        E --> I & K;
+        F --> J;
+
+        %% Koneksi ke Manajemen & Observabilitas
+        C & D & E & F & G --> L & M;
+        C & D & E & F & G --> N & O & P & Q;
     end
 
     %% Styling untuk membuat diagram lebih menarik
@@ -172,7 +172,7 @@ Gunakan perintah ini dari direktori `infra` untuk mengelola lingkungan Anda.
 
 ## 🌐 Mengakses Layanan
 
-Setelah menjalankan `make local-up`, Anda dapat mengakses berbagai dasbor dan UI dari browser Anda:
+Memperbarui daftar dengan layanan baru dan port yang relevan.
 
 | Layanan | URL | Kredensial (jika ada) |
 | :--- | :--- | :--- |
@@ -183,8 +183,9 @@ Setelah menjalankan `make local-up`, Anda dapat mengakses berbagai dasbor dan UI
 | **Prometheus** | `http://localhost:9090` | - |
 | **Vault UI** | `http://localhost:8200` | Token: `root-token-for-dev` |
 | **Consul UI** | `http://localhost:8500` | - |
-| **Konsol Minio** | `http://localhost:9001` | `minioadmin` / `minioadmin` |
-| **RabbitMQ UI**       | `http://localhost:15672`       | `guest` / `guest`                     |
+| **RabbitMQ UI** | `http://localhost:15672` | `guest` / `guest` |
+| **Konsol MinIO** | `http://localhost:9001` | `minioadmin` / `minioadmin` |
+
 
 ---
 
